@@ -1,5 +1,9 @@
 package com.simpletwiliovoice
 
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.Manifest
+import androidx.core.app.ActivityCompat
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -18,5 +22,18 @@ class MainActivity : ReactActivity() {
    * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
-      DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
+      object : DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled) {
+        override fun onCreate(savedInstanceState: Bundle?) {
+          super.onCreate(savedInstanceState)
+          askForAudioPermission()
+        }
+      }
+
+  private fun askForAudioPermission() {
+    val permission = Manifest.permission.RECORD_AUDIO
+    if (ActivityCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+        ActivityCompat.requestPermissions(this, arrayOf(permission), 42)
+        // You can throw in a nice message like "Can I record your soul's melody?"
+    }
+  }
 }

@@ -1,65 +1,104 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, {useState} from 'react';
 import {
   SafeAreaView,
-  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  useColorScheme,
+  TouchableOpacity,
   View,
+  useColorScheme,
 } from 'react-native';
+import {Call, Voice} from '@twilio/voice-react-native-sdk';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const makeOutgoingCall = async () => {
+  const sip = 'testopop.sip.twilio.com';
+  const accessToken = '';
+  const voice = new Voice();
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+  try {
+    if (!accessToken) {
+      throw new Error('Access token is invalid or not provided.');
+    }
 
-function Section({children, title}: SectionProps): React.JSX.Element {
+    const outgoingCallResult = await settlePromise(
+      voice.connect(accessToken, {
+        params: {
+          url: sip,
+          To: '+08091919191',
+          From: 'LOLO',
+          recipientType: 'client',
+        },
+      }),
+    );
+
+    if (outgoingCallResult.status === 'rejected') {
+      console.log('NATIVE_MODULE_REJECTED:', outgoingCallResult.reason);
+      return;
+    }
+
+    const outgoingCall = outgoingCallResult.value;
+
+    outgoingCall.on(
+      Call.Event.ConnectFailure,
+      error => error && console.error('ConnectFailure:', error),
+    );
+
+    Object.values(Call.Event).forEach(callEvent =>
+      outgoingCall.on(callEvent, () => console.info('Event:', callEvent)),
+    );
+
+    outgoingCall.once(Call.Event.Connected, () => {});
+
+    return outgoingCall;
+  } catch (error) {
+    console.error('Failed to make a call:', error);
+  }
+};
+
+const App = () => {
+  const [callStatus, setCallStatus] = useState('Call');
   const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+  const backgroundStyle = {backgroundColor: isDarkMode ? 'black' : 'white'};
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  const handlePress = async () => {
+    setCallStatus('Calling...');
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+    try {
+      const outgoingCall = await makeOutgoingCall();
+
+      if (outgoingCall) {
+        outgoingCall.on(Call.Event.ConnectFailure, error => {
+          setCallStatus('Call Failed');
+          console.error('ConnectFailure:', error);
+        });
+
+        outgoingCall.on(Call.Event.Ringing, () => {
+          setCallStatus('Ringing...');
+          console.info('Event: ringing');
+        });
+
+        outgoingCall.on(Call.Event.Connected, () => {
+          setCallStatus('Call Connected');
+          console.info('Event: connected');
+        });
+
+        outgoingCall.on(Call.Event.Disconnected, error => {
+          setCallStatus('Call Disconnected');
+          console.info('Event: disconnected');
+          if (error) {
+            console.error('Disconnected:', error);
+          }
+          setTimeout(() => {
+            setCallStatus('Call');
+          }, 4000);
+        });
+      } else {
+        setCallStatus('Call Failed');
+      }
+    } catch (error) {
+      setCallStatus('Call Failed');
+      console.error('Failed to make a call:', error);
+    }
   };
 
   return (
@@ -68,51 +107,53 @@ function App(): React.JSX.Element {
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor={backgroundStyle.backgroundColor}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+      <View style={styles.container}>
+        <View style={styles.centeredContent}>
+          <TouchableOpacity onPress={handlePress} style={styles.button}>
+            <Text style={styles.buttonText}>{callStatus}</Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    justifyContent: 'center',
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  centeredContent: {
+    alignItems: 'center',
   },
-  sectionDescription: {
-    marginTop: 8,
+  button: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#007bff',
+    borderRadius: 5,
+    height: 40,
+  },
+  buttonText: {
+    color: 'white',
     fontSize: 18,
-    fontWeight: '400',
   },
-  highlight: {
-    fontWeight: '700',
+  status: {
+    textAlign: 'center',
+    marginTop: 100,
+    fontSize: 18,
+    color: 'red',
   },
 });
 
 export default App;
+
+export async function settlePromise<T>(
+  promise: Promise<T>,
+): Promise<
+  {status: 'fulfilled'; value: T} | {status: 'rejected'; reason: unknown}
+> {
+  return promise
+    .then(value => ({status: 'fulfilled' as const, value}))
+    .catch(reason => ({status: 'rejected' as const, reason}));
+}
