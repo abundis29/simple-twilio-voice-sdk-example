@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useReducer} from 'react';
 import {
   SafeAreaView,
   StatusBar,
@@ -8,98 +8,44 @@ import {
   View,
   useColorScheme,
 } from 'react-native';
-import {Call, Voice} from '@twilio/voice-react-native-sdk';
 
-const makeOutgoingCall = async () => {
-  const sip = 'testopop.sip.twilio.com';
-  const accessToken = '';
-  const voice = new Voice();
+import {useOutgoingCall} from './useCall';
 
-  try {
-    if (!accessToken) {
-      throw new Error('Access token is invalid or not provided.');
-    }
-
-    const outgoingCallResult = await settlePromise(
-      voice.connect(accessToken, {
-        params: {
-          url: sip,
-          To: '+08091919191',
-          From: 'LOLO',
-          recipientType: 'client',
-        },
-      }),
-    );
-
-    if (outgoingCallResult.status === 'rejected') {
-      console.log('NATIVE_MODULE_REJECTED:', outgoingCallResult.reason);
-      return;
-    }
-
-    const outgoingCall = outgoingCallResult.value;
-
-    outgoingCall.on(
-      Call.Event.ConnectFailure,
-      error => error && console.error('ConnectFailure:', error),
-    );
-
-    Object.values(Call.Event).forEach(callEvent =>
-      outgoingCall.on(callEvent, () => console.info('Event:', callEvent)),
-    );
-
-    outgoingCall.once(Call.Event.Connected, () => {});
-
-    return outgoingCall;
-  } catch (error) {
-    console.error('Failed to make a call:', error);
-  }
+const initialState = {
+  ready: false,
+  number: '',
+  ringing: false,
+  inCall: false,
+  held: false,
+  error: null,
+  accessToken:
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2Q0YTAyOWI0YzA3YjYyMDEwMTgxM2ZhNWM0ZTk4NmMzLTE3MDYzNjE1MTgiLCJncmFudHMiOnsiaWRlbnRpdHkiOiJ1c2VyIiwidm9pY2UiOnsiaW5jb21pbmciOnsiYWxsb3ciOnRydWV9LCJvdXRnb2luZyI6eyJhcHBsaWNhdGlvbl9zaWQiOiJBUGQwMzU4NGY2M2Q3NzI0OTcyNmEzMWU0NGUzMTUzOThmIn19fSwiaWF0IjoxNzA2MzYxNTE4LCJleHAiOjE3MDYzNjUxMTgsImlzcyI6IlNLZDRhMDI5YjRjMDdiNjIwMTAxODEzZmE1YzRlOTg2YzMiLCJzdWIiOiJBQ2M3YjUyZTViZGRjNjNjMmE2ZjIxOTA2YzA4MGY2YzdjIn0.6o5m3d9wV3LXu4AH9cVZVUIDiAIJJb2iNkUTcz1tc1E', // Adding a token to the state for good measure
+  sip: 'testopop.sip.twilio.com',
 };
 
+const reducer = (state: any, action: any) => ({...state, ...action});
+
 const App = () => {
-  const [callStatus, setCallStatus] = useState('Call');
+  const [state] = useReducer(reducer, initialState);
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundStyle = {backgroundColor: isDarkMode ? 'black' : 'white'};
 
-  const handlePress = async () => {
-    setCallStatus('Calling...');
+  const {sip, accessToken} = state;
 
-    try {
-      const outgoingCall = await makeOutgoingCall();
+  const {handleCall, callStatus, loading} = useOutgoingCall({
+    sip,
+    accessToken,
+  });
 
-      if (outgoingCall) {
-        outgoingCall.on(Call.Event.ConnectFailure, error => {
-          setCallStatus('Call Failed');
-          console.error('ConnectFailure:', error);
-        });
-
-        outgoingCall.on(Call.Event.Ringing, () => {
-          setCallStatus('Ringing...');
-          console.info('Event: ringing');
-        });
-
-        outgoingCall.on(Call.Event.Connected, () => {
-          setCallStatus('Call Connected');
-          console.info('Event: connected');
-        });
-
-        outgoingCall.on(Call.Event.Disconnected, error => {
-          setCallStatus('Call Disconnected');
-          console.info('Event: disconnected');
-          if (error) {
-            console.error('Disconnected:', error);
-          }
-          setTimeout(() => {
-            setCallStatus('Call');
-          }, 4000);
-        });
-      } else {
-        setCallStatus('Call Failed');
-      }
-    } catch (error) {
-      setCallStatus('Call Failed');
-      console.error('Failed to make a call:', error);
-    }
-  };
+  if (loading) {
+    return (
+      <SafeAreaView style={backgroundStyle}>
+        <View style={styles.container}>
+          <Text>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={backgroundStyle}>
@@ -109,7 +55,7 @@ const App = () => {
       />
       <View style={styles.container}>
         <View style={styles.centeredContent}>
-          <TouchableOpacity onPress={handlePress} style={styles.button}>
+          <TouchableOpacity onPress={handleCall} style={styles.button}>
             <Text style={styles.buttonText}>{callStatus}</Text>
           </TouchableOpacity>
         </View>
@@ -119,13 +65,8 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  centeredContent: {
-    alignItems: 'center',
-  },
+  container: {flex: 1, justifyContent: 'center'},
+  centeredContent: {alignItems: 'center'},
   button: {
     marginTop: 20,
     paddingHorizontal: 20,
@@ -134,26 +75,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     height: 40,
   },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
-  },
-  status: {
-    textAlign: 'center',
-    marginTop: 100,
-    fontSize: 18,
-    color: 'red',
-  },
+  buttonText: {color: 'white', fontSize: 18},
+  status: {textAlign: 'center', marginTop: 100, fontSize: 18, color: 'red'},
 });
 
 export default App;
-
-export async function settlePromise<T>(
-  promise: Promise<T>,
-): Promise<
-  {status: 'fulfilled'; value: T} | {status: 'rejected'; reason: unknown}
-> {
-  return promise
-    .then(value => ({status: 'fulfilled' as const, value}))
-    .catch(reason => ({status: 'rejected' as const, reason}));
-}

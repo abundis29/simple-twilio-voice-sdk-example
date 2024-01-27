@@ -1,15 +1,31 @@
 #import "AppDelegate.h"
-
 #import <React/RCTBundleURLProvider.h>
+#import <RNCallKeep/RNCallKeep.h>
+#import <React/RCTRootView.h>
 
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+  // Your existing code
   self.moduleName = @"simpleTwilioVoice";
-  // You can add your custom initial props in the dictionary below.
-  // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
+  
+  // New RNCallKeep setup
+  self.bridge = [[RCTBridge alloc] initWithDelegate:self launchOptions:launchOptions];
+
+  [RNCallKeep setup:@{
+    @"appName": @"Awesome App",
+    @"maximumCallGroups": @3,
+    @"maximumCallsPerCallGroup": @1,
+    @"supportsVideo": @NO,
+  }];
+
+  RCTRootView *rootView = [[RCTRootView alloc] initWithBridge:self.bridge
+                                                   moduleName:@"App"
+                                            initialProperties:nil];
+
+  // Other code...
 
   return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
