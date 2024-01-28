@@ -19,7 +19,7 @@ const initialState = {
   held: false,
   error: null,
   accessToken:
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2Q0YTAyOWI0YzA3YjYyMDEwMTgxM2ZhNWM0ZTk4NmMzLTE3MDYzNjE1MTgiLCJncmFudHMiOnsiaWRlbnRpdHkiOiJ1c2VyIiwidm9pY2UiOnsiaW5jb21pbmciOnsiYWxsb3ciOnRydWV9LCJvdXRnb2luZyI6eyJhcHBsaWNhdGlvbl9zaWQiOiJBUGQwMzU4NGY2M2Q3NzI0OTcyNmEzMWU0NGUzMTUzOThmIn19fSwiaWF0IjoxNzA2MzYxNTE4LCJleHAiOjE3MDYzNjUxMTgsImlzcyI6IlNLZDRhMDI5YjRjMDdiNjIwMTAxODEzZmE1YzRlOTg2YzMiLCJzdWIiOiJBQ2M3YjUyZTViZGRjNjNjMmE2ZjIxOTA2YzA4MGY2YzdjIn0.6o5m3d9wV3LXu4AH9cVZVUIDiAIJJb2iNkUTcz1tc1E', // Adding a token to the state for good measure
+    '', // Adding a token to the state for good measure
   sip: 'testopop.sip.twilio.com',
 };
 
